@@ -1,0 +1,26 @@
+shakesbot
+
+this was a pedagogical exercise for learning ruby (though I liked the idea and
+would've done it in python at some point anyway).
+
+It's a robot that parses HTML files downloaded from http://shakespeare.mit.edu/
+and "performs" them on twitter. See http://twitter.com/shakesbot to see how it
+works.
+
+as it's not really useful outside of my one shakespeare robot I'm just leaving
+it as is; but it could be adapted into a general 'twitter player' for other
+kinds of structured performances in XML or HTML. Until then it will just remain
+as source code (ie not a gem or anything).
+
+usage
+
+./shakesbot.rb [--loop] [--interval SECONDS] play1.html play2.html...
+
+dependencies
+
+- nokogiri
+
+author
+
+nathaniel k smith
+nathanielksmith@gmail.com
