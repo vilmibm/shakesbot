@@ -54,8 +54,7 @@ class Play
     def perform(interval, verbose, rehearse)
         puts "tweeting: #{ @title }"    if verbose
         puts "would tweet: #{ @title }" if rehearse
-        @tweeter.tweet(@title)
-        sleep interval
+        @tweeter.tweet(@title)      unless rehearse
 
         current_speaker = nil
 
@@ -81,7 +80,7 @@ class Play
             end
 
             tweets.each do |msg|
-                puts "tweeting: #{msg}" if @verbose
+                puts "tweeting: #{msg}" if verbose
                 success = false
                 until success
                     begin
