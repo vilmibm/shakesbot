@@ -7,13 +7,22 @@
 
 require 'rubygems'
 require 'nokogiri'
+require 'twitter_oauth'
 
 require 'optparse'
 require 'ostruct'
 require 'pp'
 
+require 'shakescfg'
+
 class Tweeter
     def initialize(secret, token)
+        @client = TwitterOAuth::Client.new(
+            :consumer_key    => Config::CONSUMER_KEY,
+            :consumer_secret => Config::CONSUMER_SECRET,
+            :token           => Config::TOKEN,
+            :secret          => Config::SECRET
+        )
     end
 
     # return an array of 140 char or less strings
@@ -28,7 +37,7 @@ class Tweeter
     end
 
     def tweet(msg)
-        puts "tweeting: #{msg}"
+        @client.update(msg)
     end
 end
 
@@ -40,7 +49,7 @@ class Play
     end
 
     # Tweet each line, sleeping for interval seconds in between
-    def perform(interval)
+    def perform(interval, verbose)
         @tweeter.tweet(@title)
         sleep interval
 
@@ -58,10 +67,12 @@ class Play
                 if tweet.length > 140
                     broken_up = Tweeter.break_up(tweet)
                     broken_up.each do |msg|
+                        puts "tweeting: #{msg}" if @verbose
                         @tweeter.tweet(msg)
                         sleep interval
                     end
                 else
+                    puts "tweeting: #{msg}" if @verbose
                     @tweeter.tweet(tweet)
                     sleep interval
                 end
@@ -83,6 +94,7 @@ class Program
         @options = OpenStruct.new
         @options.loop     = false
         @options.interval = 5
+        @options.verbose  = false
         
         unless parsed_options?
             Process.exit
@@ -91,7 +103,7 @@ class Program
 
     def curtains_up
         @plays.each do |play|
-            play.perform(@options.interval)
+            play.perform(@options.interval, @options.verbose)
         end
     end
 
@@ -101,6 +113,7 @@ class Program
         opts = OptionParser.new
         opts.on('-l', '--loop') { @options.loop = true }
         opts.on('-i', '--interval INTVL', Integer) {|intvl| @options.interval = intvl}
+        opts.on('-v', '--verbose') { @options.verbose = true }
 
         opts.parse!(@args) rescue return false
 
