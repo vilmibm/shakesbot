@@ -16,7 +16,7 @@ require 'pp'
 require 'shakescfg'
 
 class Tweeter
-    def initialize(secret, token)
+    def initialize()
         @client = TwitterOAuth::Client.new(
             :consumer_key    => Config::CONSUMER_KEY,
             :consumer_secret => Config::CONSUMER_SECRET,
@@ -27,6 +27,8 @@ class Tweeter
 
     # return an array of 140 char or less strings
     def self.break_up(string)
+        return [string] if string.length < 140
+
         broken_up = []
         while string.length > 140
             broken_up.push(string[0,139])
@@ -44,12 +46,14 @@ end
 class Play
     def initialize(parsed_html)
         @title   = parsed_html.css('td.play').first.content
-        @tweeter = Tweeter.new(1,1)
+        @tweeter = Tweeter.new()
         @anchors = parsed_html.css("a[name!='']") # ignore two irrelevant anchors
     end
 
     # Tweet each line, sleeping for interval seconds in between
-    def perform(interval, verbose)
+    def perform(interval, verbose, rehearse)
+        puts "tweeting: #{ @title }"    if verbose
+        puts "would tweet: #{ @title }" if rehearse
         @tweeter.tweet(@title)
         sleep interval
 
@@ -58,28 +62,40 @@ class Play
         until @anchors.empty?
             a = @anchors.shift
 
+            # new speaker?
             speaker = a.css('b').first
             if speaker
                 current_speaker = speaker.content
-            else
-                line = a.content
-                tweet = "#{current_speaker}: '#{line}'"
-                if tweet.length > 140
-                    broken_up = Tweeter.break_up(tweet)
-                    broken_up.each do |msg|
-                        puts "tweeting: #{msg}" if @verbose
+                puts "found speaker: #{current_speaker}" if verbose
+                next
+            end
+
+            line   = a.content
+            tweet  = "#{current_speaker}: '#{line}'"
+            tweets = Tweeter.break_up(tweet)
+
+            if rehearse
+                tweets.each {|msg| puts "would tweet: #{msg}"}
+                sleep 1
+                next
+            end
+
+            tweets.each do |msg|
+                puts "tweeting: #{msg}" if @verbose
+                success = false
+                until success
+                    begin
                         @tweeter.tweet(msg)
-                        sleep interval
+                        success = true
+                    rescue
+                        puts 'error while trying to tweet, waiting to try again' if verbose
+                        sleep 180
                     end
-                else
-                    puts "tweeting: #{msg}" if @verbose
-                    @tweeter.tweet(tweet)
-                    sleep interval
                 end
+                sleep interval
             end
         end
     end
-
 end
 
 class Program
@@ -95,6 +111,7 @@ class Program
         @options.loop     = false
         @options.interval = 5
         @options.verbose  = false
+        @options.rehearse = false
         
         unless parsed_options?
             Process.exit
@@ -103,7 +120,8 @@ class Program
 
     def curtains_up
         @plays.each do |play|
-            play.perform(@options.interval, @options.verbose)
+            puts 'beginning a performance...' if @options.verbose
+            play.perform(@options.interval, @options.verbose, @options.rehearse)
         end
     end
 
@@ -111,11 +129,14 @@ class Program
 
     def parsed_options?
         opts = OptionParser.new
-        opts.on('-l', '--loop') { @options.loop = true }
+        opts.on('-l', '--loop')                    { @options.loop     = true }
+        opts.on('-v', '--verbose')                 { @options.verbose  = true }
+        opts.on('-r', '--rehearse')                { @options.rehearse = true }
         opts.on('-i', '--interval INTVL', Integer) {|intvl| @options.interval = intvl}
-        opts.on('-v', '--verbose') { @options.verbose = true }
 
         opts.parse!(@args) rescue return false
+
+        puts 'options parsed.' if @options.verbose
 
         # play html files are left in @args
         @args.each do |html|
@@ -124,6 +145,8 @@ class Program
             play   = Play.new(parsed)
             @plays.push(play)
         end
+
+        puts 'All plays parsed.' if @options.verbose
 
         true
     end
