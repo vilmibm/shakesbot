@@ -14,11 +14,12 @@ as source code (ie not a gem or anything).
 
 usage
 
-./shakesbot.rb [--loop] [--interval SECONDS] play1.html play2.html...
+./shakesbot.rb [--verbose] [--loop] [--interval SECONDS] play1.html play2.html...
 
 dependencies
 
 - nokogiri
+- twitter_oauth
 
 author
 
